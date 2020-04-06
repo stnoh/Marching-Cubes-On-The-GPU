@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.IO;
 
-#pragma warning disable 162
+#pragma warning disable 649 // suppress "never assigned" warning for "struct Vert"
 
 using ImprovedPerlinNoiseProject;
 
