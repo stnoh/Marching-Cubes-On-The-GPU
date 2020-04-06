@@ -13,3 +13,9 @@ I have also added a stage to generate the smoothed normals by using the derivati
 You can download a unity package [here](https://app.box.com/s/vab44jb4nn93bbvnqya2c5v9sbh18eqv).
 
 ![Marching Cubes GPU](https://static.wixstatic.com/media/1e04d5_6d24bd1c351a4136b87d63351bc4b1d0~mv2.jpg/v1/fill/w_550,h_550,al_c,q_80,usm_0.66_1.00_0.01/1e04d5_6d24bd1c351a4136b87d63351bc4b1d0~mv2.jpg)
+
+## Few updates by [stnoh](github.com/stnoh)
+
+- Upgrade to Unity 2018: several .js codes in the original repo do not work well, so I removed and replace them.  
+- Add testing scene for [dynamic update](./Assets/MarchingCubesGPU/Scenes/MarchingCubesGPU_Dynamic.unity).  
+  The update routine is quite Naive, and a lot of further improvement is needed.  
