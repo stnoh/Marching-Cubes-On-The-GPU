@@ -43,9 +43,6 @@ namespace MarchingCubesGPUProject
 
         void Start()
         {
-            //Allows this camera to draw mesh procedurally.
-            PostRenderEvent.AddEvent(Camera.main, DrawMesh);
-
             //There are 8 threads run per group so N must be divisible by 8.
             if (N % 8 != 0)
                 throw new System.ArgumentException("N must be divisible be 8");
@@ -124,13 +121,9 @@ namespace MarchingCubesGPUProject
             m_marchingCubes.Dispatch(0, N / 8, N / 8, N / 8);
         }
 
-        /// <summary>
-        /// Draws the mesh when cameras OnPostRender called.
-        /// </summary>
-        /// <param name="camera"></param>
-        void DrawMesh(Camera camera)
+        void OnRenderObject()
         {
-            //Since mesh is in a buffer need to use DrawProcedual called from OnPostRender or OnRenderObject
+            //Since mesh is in a buffer need to use DrawProcedual called from OnPostRender
             m_drawBuffer.SetBuffer("_Buffer", m_meshBuffer);
             m_drawBuffer.SetPass(0);
 
@@ -145,8 +138,6 @@ namespace MarchingCubesGPUProject
             m_cubeEdgeFlags.Release();
             m_triangleConnectionTable.Release();
             m_normalsBuffer.Release();
-
-            PostRenderEvent.RemoveEvent(Camera.main, DrawMesh);
         }
 
     }
