@@ -2,6 +2,9 @@
 using UnityEngine.Rendering;
 using System.Collections.Generic;
 
+using System.Linq;
+using System.IO;
+
 #pragma warning disable 162
 
 using ImprovedPerlinNoiseProject;
@@ -87,6 +90,9 @@ namespace MarchingCubesGPUProject
             m_perlinNoise.SetBuffer(0, "_Result", m_noiseBuffer);
 
             m_perlinNoise.Dispatch(0, N / 8, N / 8, N / 8);
+
+            //Reads back the voxel data from the GPU and write as .txt file.
+            //ReadBackVoxels(m_noiseBuffer, "test.txt");
 
             //Make the voxel normals.
             m_normals.SetInt("_Width", N);
@@ -187,6 +193,37 @@ namespace MarchingCubesGPUProject
             }
 
             return objects;
+        }
+
+        /// <summary>
+        /// Reads back the voxel data from the GPU and write as .txt file.
+        /// </summary>
+        /// <returns></returns>
+        void ReadBackVoxels(ComputeBuffer noiseBuffer, string filename)
+        {
+            float[] voxels = new float[N * N * N];
+            noiseBuffer.GetData(voxels);
+
+            // normalize to [0.0:1.0]
+            float min = voxels.Min();
+            float max = voxels.Max();
+
+            using (FileStream fs = new FileStream(filename, FileMode.Create))
+            {
+                using (BinaryWriter bw = new BinaryWriter(fs))
+                {
+                    for (int i = 0; i < voxels.Length; i++)
+                    {
+                        float val = voxels[i]; // raw float data
+                        //float val01 = (val - min) / (max - min); // normalized float
+                        //byte b = (byte)(255.0f * val01); // raw byte data
+
+                        bw.Write(val);
+                    }
+                }
+            }
+
+            print(string.Format("{0} {1}", min, max));
         }
 
         GameObject MakeGameObject(List<Vector3> positions, List<Vector3> normals, List<int> index)
