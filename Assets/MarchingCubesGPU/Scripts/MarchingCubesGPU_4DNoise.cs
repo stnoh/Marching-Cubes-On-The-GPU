@@ -127,7 +127,7 @@ namespace MarchingCubesGPUProject
             m_drawBuffer.SetBuffer("_Buffer", m_meshBuffer);
             m_drawBuffer.SetPass(0);
 
-            Graphics.DrawProcedural(MeshTopology.Triangles, SIZE);
+            Graphics.DrawProceduralNow(MeshTopology.Triangles, SIZE);
         }
 
         void OnDestroy()
