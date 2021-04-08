@@ -10,9 +10,10 @@ namespace MarchingCubesGPUProject
 {
     public class MarchingCubesGPU_Dynamic : MonoBehaviour
     {
-
         //The size of the voxel array for each dimension
         const int N = 40;
+
+        const float rescale = 16.0f;
 
         //The size of the buffer that holds the verts.
         //This is the maximum number of verts that the 
@@ -79,6 +80,8 @@ namespace MarchingCubesGPUProject
             m_clearBuffer.Dispatch(0, N / 8, N / 8, N / 8);
 
             //Send data to GPU [TEMPORARY, VERY SLOW!] 
+            float sin_value = Mathf.Sin(m_speed * Time.realtimeSinceStartup);
+
             for (int k = 0; k < N; k++)
                 for (int j = 0; j < N; j++)
                     for (int i = 0; i < N; i++)
@@ -87,7 +90,10 @@ namespace MarchingCubesGPUProject
                         float x = (float)i / (float)N - 0.5f;
                         float y = (float)j / (float)N - 0.5f;
                         float z = (float)k / (float)N - 0.5f;
-                        voxelBuffer[i + j * N + k * N * N] = r * r - (x * x + y * y + z * z) - 0.05f * Mathf.Sin(m_speed * Time.realtimeSinceStartup);
+
+                        float val = r * r - (x * x + y * y + z * z) - 0.05f * sin_value;
+
+                        voxelBuffer[i + j * N + k * N * N] = Mathf.Clamp(rescale * val, -1.0f, +1.0f);
                     }
             m_noiseBuffer.SetData(voxelBuffer);
 
@@ -120,7 +126,7 @@ namespace MarchingCubesGPUProject
             m_drawBuffer.SetBuffer("_Buffer", m_meshBuffer);
             m_drawBuffer.SetPass(0);
 
-            Graphics.DrawProcedural(MeshTopology.Triangles, SIZE);
+            Graphics.DrawProceduralNow(MeshTopology.Triangles, SIZE);
         }
 
         void OnDestroy()
