@@ -17,7 +17,7 @@ StructuredBuffer<int> _TriangleConnectionTable;
 
 StructuredBuffer<int> _CubeEdgeFlags;
 
-StructuredBuffer<float> _Voxels;
+StructuredBuffer<uint> _Voxels;
 
 Texture3D<float3> _Normals;
 
@@ -34,7 +34,7 @@ static float3 edgeDirection[12] =
 {
 	float3(1.0f, 0.0f, 0.0f),float3(0.0f, 1.0f, 0.0f),float3(-1.0f, 0.0f, 0.0f),float3(0.0f, -1.0f, 0.0f),
 	float3(1.0f, 0.0f, 0.0f),float3(0.0f, 1.0f, 0.0f),float3(-1.0f, 0.0f, 0.0f),float3(0.0f, -1.0f, 0.0f),
-	float3(0.0f, 0.0f, 1.0f),float3(0.0f, 0.0f, 1.0f),float3(0.0f, 0.0f, 1.0f),float3(0.0f,  0.0f, 1.0f)
+	float3(0.0f, 0.0f, 1.0f),float3(0.0f, 0.0f, 1.0f),float3( 0.0f, 0.0f, 1.0f),float3(0.0f,  0.0f, 1.0f)
 };
 
 // vertexOffset lists the positions, relative to vertex0, of each of the 8 vertices of a cube
@@ -44,17 +44,39 @@ static float3 vertexOffset[8] =
 	float3(0, 0, 1),float3(1, 0, 1),float3(1, 1, 1),float3(0, 1, 1)
 };
 
+// "byte"
+float GetVoxelData(int x, int y, int z)
+{
+	int index = (x)+(y)* _Width + (z)* _Width * _Height;
+	int id = index / 4;
+	int id_mod = index % 4;
+
+	uint val_int = _Voxels[id];
+
+	switch (id_mod) {
+	case 0: val_int = (val_int) & 0xff; break;
+	case 1: val_int = (val_int >> 8) & 0xff; break;
+	case 2: val_int = (val_int >> 16) & 0xff; break;
+	case 3: val_int = (val_int >> 24) & 0xff; break;
+	default: val_int = (val_int) & 0xff; break;
+	}
+
+	float val = (float)val_int;
+
+	return (val - 127.0f) / 127.0f;
+}
+
 void FillCube(int x, int y, int z, out float cube[8])
 {
-	cube[0] = _Voxels[x + y * _Width + z * _Width * _Height];
-	cube[1] = _Voxels[(x + 1) + y * _Width + z * _Width * _Height];
-	cube[2] = _Voxels[(x + 1) + (y + 1) * _Width + z * _Width * _Height];
-	cube[3] = _Voxels[x + (y + 1) * _Width + z * _Width * _Height];
+	cube[0] = GetVoxelData(x  , y  , z  );
+	cube[1] = GetVoxelData(x+1, y  , z  );
+	cube[2] = GetVoxelData(x+1, y+1, z  );
+	cube[3] = GetVoxelData(x  , y+1, z  );
 
-	cube[4] = _Voxels[x + y * _Width + (z + 1) * _Width * _Height];
-	cube[5] = _Voxels[(x + 1) + y * _Width + (z + 1) * _Width * _Height];
-	cube[6] = _Voxels[(x + 1) + (y + 1) * _Width + (z + 1) * _Width * _Height];
-	cube[7] = _Voxels[x + (y + 1) * _Width + (z + 1) * _Width * _Height];
+	cube[4] = GetVoxelData(x  , y  , z+1);
+	cube[5] = GetVoxelData(x+1, y  , z+1);
+	cube[6] = GetVoxelData(x+1, y+1, z+1);
+	cube[7] = GetVoxelData(x  , y+1, z+1);
 }
 
 // GetOffset finds the approximate point of intersection of the surface
@@ -90,7 +112,7 @@ void CSMain(int3 id : SV_DispatchThreadID)
 	float3 centre = float3(_Width, 0, _Depth) / 2.0;
 
 	float cube[8];
-	FillCube(id.x, id.y, id.z, cube);
+	FillCube(id.x, id.y, id.z, cube); // bring the volume data to cube[8]
 
 	int i = 0;
 	int flagIndex = 0;
@@ -142,21 +164,3 @@ void CSMain(int3 id : SV_DispatchThreadID)
 	}
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

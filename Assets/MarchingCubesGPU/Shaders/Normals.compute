@@ -1,24 +1,41 @@
 
 #pragma kernel CSMain
 
-StructuredBuffer<float> _Noise;
+StructuredBuffer<uint> _Noise;
 
 RWTexture3D<float3> _Result;
 
 int _Width, _Height;
 
+float GetVoxelData(int x, int y, int z)
+{
+	int index = (x) + (y) * _Width + (z) * _Width * _Height;
+	int id = index / 4;
+	int id_mod = index % 4;
+
+	uint val_int = _Noise[id];
+
+	switch (id_mod) {
+	case 0: val_int = (val_int      ) & 0xff; break;
+	case 1: val_int = (val_int >>  8) & 0xff; break;
+	case 2: val_int = (val_int >> 16) & 0xff; break;
+	case 3: val_int = (val_int >> 24) & 0xff; break;
+	default: val_int = (val_int) & 0xff; break;
+	}
+
+	float val = (float)val_int;
+
+	return (val - 127.0f) / 127.0f;
+}
+
 [numthreads(8,8,8)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
-	float v = _Noise[id.x + id.y * _Width + id.z * _Width * _Height];
-	
-	float dx = v - _Noise[(id.x+1) + id.y * _Width + id.z * _Width * _Height];
-	
-	float dy = v -_Noise[id.x + (id.y+1) * _Width + id.z * _Width * _Height];
-	
-	float dz = v -_Noise[id.x + id.y * _Width + (id.z+1) * _Width * _Height];
-	
+	float v = GetVoxelData(id.x, id.y, id.z);
 
-	_Result[id] = normalize(float3(dx,dy,dz));
-
+	float dx = v - GetVoxelData(id.x+1, id.y  , id.z  );
+	float dy = v - GetVoxelData(id.x  , id.y+1, id.z  );
+	float dz = v - GetVoxelData(id.x  , id.y  , id.z+1);
+	
+	_Result[id] = normalize(float3(dx, dy, dz));
 }

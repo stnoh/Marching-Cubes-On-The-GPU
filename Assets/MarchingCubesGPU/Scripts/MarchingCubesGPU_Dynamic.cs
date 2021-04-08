@@ -35,7 +35,11 @@ namespace MarchingCubesGPUProject
 
         ComputeBuffer m_cubeEdgeFlags, m_triangleConnectionTable;
 
-        float[] voxelBuffer;
+        float[] voxelBuffer_float;
+
+        // "byte" array
+        uint[] voxelBuffer;
+        byte[] voxelBuffer_byte;
 
         void Start()
         {
@@ -47,7 +51,12 @@ namespace MarchingCubesGPUProject
             m_noiseBuffer = new ComputeBuffer(N * N * N, sizeof(float));
 
             //Allocates voxel area in advance
-            voxelBuffer = new float[N * N * N];
+            voxelBuffer_float = new float[N * N * N];
+
+            // "byte" array
+            m_noiseBuffer = new ComputeBuffer(N * N * N / 4, sizeof(uint)); // "byte"
+            voxelBuffer = new uint[N * N * N / 4]; // "byte" - 8bit
+            voxelBuffer_byte = new byte[N * N * N];
 
             //Holds the normals of the voxels.
             m_normalsBuffer = new RenderTexture(N, N, 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
@@ -79,6 +88,8 @@ namespace MarchingCubesGPUProject
             m_clearBuffer.Dispatch(0, N / 8, N / 8, N / 8);
 
             //Send data to GPU [TEMPORARY, VERY SLOW!] 
+            float sin_value = Mathf.Sin(m_speed * Time.realtimeSinceStartup);
+
             for (int k = 0; k < N; k++)
                 for (int j = 0; j < N; j++)
                     for (int i = 0; i < N; i++)
@@ -87,7 +98,40 @@ namespace MarchingCubesGPUProject
                         float x = (float)i / (float)N - 0.5f;
                         float y = (float)j / (float)N - 0.5f;
                         float z = (float)k / (float)N - 0.5f;
-                        voxelBuffer[i + j * N + k * N * N] = r * r - (x * x + y * y + z * z) - 0.05f * Mathf.Sin(m_speed * Time.realtimeSinceStartup);
+
+                        float val_float = r * r - (x * x + y * y + z * z) - 0.05f * sin_value;
+
+                        int index = i + j * N + k * N * N;
+                        voxelBuffer_float[index] = val_float;
+                    }
+
+            // pack float to byte array
+            for (int k = 0; k < N; k++)
+                for (int j = 0; j < N; j++)
+                    for (int i = 0; i < N; i+=4)
+                    {
+                        int index = i + j * N + k * N * N;
+
+                        // convert to truncated SDF [-1.0:+1.0]
+                        const float rescale = 16.0f;
+                        float val_float0 = Mathf.Clamp(rescale * voxelBuffer_float[index + 0], -1.0f, +1.0f);
+                        float val_float1 = Mathf.Clamp(rescale * voxelBuffer_float[index + 1], -1.0f, +1.0f);
+                        float val_float2 = Mathf.Clamp(rescale * voxelBuffer_float[index + 2], -1.0f, +1.0f);
+                        float val_float3 = Mathf.Clamp(rescale * voxelBuffer_float[index + 3], -1.0f, +1.0f);
+
+                        // convert to byte range [-1.0:+1.0] -> [0.0:2.0] -> [0,254]
+                        byte val_byte0 = (byte)((int)(127.0f * (val_float0 + 1.0f)) & 0xff);
+                        byte val_byte1 = (byte)((int)(127.0f * (val_float1 + 1.0f)) & 0xff);
+                        byte val_byte2 = (byte)((int)(127.0f * (val_float2 + 1.0f)) & 0xff);
+                        byte val_byte3 = (byte)((int)(127.0f * (val_float3 + 1.0f)) & 0xff);
+
+                        // pack 4 elements in byte (uint8) to uint32
+                        voxelBuffer[index / 4] = (uint)((val_byte3 << 24) | (val_byte2 << 16) | (val_byte1 << 8) | val_byte0);
+
+                        voxelBuffer_byte[index + 0] = val_byte0;
+                        voxelBuffer_byte[index + 1] = val_byte1;
+                        voxelBuffer_byte[index + 2] = val_byte2;
+                        voxelBuffer_byte[index + 3] = val_byte3;
                     }
             m_noiseBuffer.SetData(voxelBuffer);
 
@@ -120,7 +164,7 @@ namespace MarchingCubesGPUProject
             m_drawBuffer.SetBuffer("_Buffer", m_meshBuffer);
             m_drawBuffer.SetPass(0);
 
-            Graphics.DrawProcedural(MeshTopology.Triangles, SIZE);
+            Graphics.DrawProceduralNow(MeshTopology.Triangles, SIZE);
         }
 
         void OnDestroy()
